@@ -30,7 +30,7 @@
   },
   "scripts": {
     "test": "cake test",
-    "prepublish": "cake build"
+    "prepublish": "cake build",
     "install": "./node_modules/coffee-script/bin/cake build"
   },
   "dependencies": {
