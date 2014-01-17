@@ -55,6 +55,7 @@ convertType = (swaggerType, parameter, allowMultiple, models) ->
 # @throws an error if a circular reference is detected
 convertModel = (models, model, _stack) ->
   result = {
+    patternProperties: {}
     properties: {}
     additionalProperties: if _.isObject(model.additionalProperties) then model.additionalProperties else false
   }
@@ -68,6 +69,7 @@ convertModel = (models, model, _stack) ->
 
   # copy properties of the swagger model into the json-gate model
   _.extend(result.properties, model.properties)
+  _.extend(result.patternProperties, model.patternProperties)
   # perform property level conversion
   for name, prop of result.properties
     _.extend(prop, model.properties[name])
@@ -248,8 +250,22 @@ module.exports = (app) ->
   # @option next err [Error] an error if any of the awaited parameters or body is missing, misformated, or invalid regarding the specification
   middleware.validate = (method, path, url, query, headers, bodyContainer, input, next) ->
     # path parameter extraction will be performed later by express: we must perform it ourselves
+
     [regex, pathParamsNames] = utils.extractParameters(path)
     specs = @routes[path][method]
+
+    # validate that no spurious query params are provided
+    if typeof query is 'object'
+      for own key of query
+        found = false
+        for specs in specs
+          if key == specs.name and specs.kind == 'query'
+            found = true
+            break
+        if not found
+          err = new Error(key + " is not a recognized parameter name.")
+          err.status = 400
+          return next(err)
 
     # validates all parameter in parrallel
     async.forEach(specs, (spec, done) ->
